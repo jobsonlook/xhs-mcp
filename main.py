@@ -30,7 +30,7 @@ xhs_api = XhsApi(cookie=xhs_cookie)
 
 def get_nodeid_token(url=None, note_ids=None):
     if note_ids is not None:
-        note_id = note_ids[0,24]
+        note_id = note_ids[0:24]  # Fix slice syntax
         xsec_token = note_ids[24:]
         return {"note_id": note_id, "xsec_token": xsec_token}
     parsed_url = urlparse(url)
@@ -50,14 +50,18 @@ async def check_cookie() -> str:
 
     """
     try:
-        data = await xhs_api.get_me()
+        # Add timeout for API call
+        data = await asyncio.wait_for(xhs_api.get_me(), timeout=10.0)
 
         if 'success' in data and data['success'] == True:
             return "cookie有效"
         else:
             return "cookie已失效"
+    except asyncio.TimeoutError:
+        logger.error("Cookie check timed out")
+        return "cookie检查超时"
     except Exception as e:
-        logger.error(e)
+        logger.error(f"Cookie check error: {e}")
         return "cookie已失效"
 
 
@@ -67,22 +71,29 @@ async def home_feed() -> str:
     """获取首页推荐笔记
 
     """
-    data = await xhs_api.home_feed()
-    result = "搜索结果：\n\n"
-    if 'data' in data and 'items' in data['data'] and len(data['data']['items']) > 0:
-        for i in range(0, len(data['data']['items'])):
-            item = data['data']['items'][i]
-            if 'note_card' in item and 'display_title' in item['note_card']:
-                title = item['note_card']['display_title']
-                liked_count = item['note_card']['interact_info']['liked_count']
-                # cover=item['note_card']['cover']['url_default']
-                url = f'https://www.xiaohongshu.com/explore/{item["id"]}?xsec_token={item["xsec_token"]}'
-                result += f"{i}. {title}  \n 点赞数:{liked_count} \n   链接: {url}  \n\n"
-    else:
-        result = await check_cookie()
-        if "有效" in result:
-            result = f"未找到相关的笔记"
-    return result
+    try:
+        data = await asyncio.wait_for(xhs_api.home_feed(), timeout=15.0)
+        result = "搜索结果：\n\n"
+        if 'data' in data and 'items' in data['data'] and len(data['data']['items']) > 0:
+            for i in range(0, len(data['data']['items'])):
+                item = data['data']['items'][i]
+                if 'note_card' in item and 'display_title' in item['note_card']:
+                    title = item['note_card']['display_title']
+                    liked_count = item['note_card']['interact_info']['liked_count']
+                    # cover=item['note_card']['cover']['url_default']
+                    url = f'https://www.xiaohongshu.com/explore/{item["id"]}?xsec_token={item["xsec_token"]}'
+                    result += f"{i}. {title}  \n 点赞数:{liked_count} \n   链接: {url}  \n\n"
+        else:
+            result = await check_cookie()
+            if "有效" in result:
+                result = f"未找到相关的笔记"
+        return result
+    except asyncio.TimeoutError:
+        logger.error("Home feed request timed out")
+        return "获取首页推荐笔记超时"
+    except Exception as e:
+        logger.error(f"Home feed error: {e}")
+        return f"获取首页推荐笔记失败: {str(e)}"
 
 @mcp.tool()
 async def search_notes(keywords: str) -> str:
@@ -91,24 +102,30 @@ async def search_notes(keywords: str) -> str:
         Args:
             keywords: 搜索关键词
     """
-
-    data = await xhs_api.search_notes(keywords)
-    logger.info(f'keywords:{keywords},data:{data}')
-    result = "搜索结果：\n\n"
-    if 'data' in data and 'items' in data['data'] and len(data['data']['items']) > 0:
-        for i in range(0, len(data['data']['items'])):
-            item = data['data']['items'][i]
-            if 'note_card' in item and 'display_title' in item['note_card']:
-                title = item['note_card']['display_title']
-                liked_count = item['note_card']['interact_info']['liked_count']
-                # cover=item['note_card']['cover']['url_default']
-                url = f'https://www.xiaohongshu.com/explore/{item["id"]}?xsec_token={item["xsec_token"]}'
-                result += f"{i}. {title}  \n 点赞数:{liked_count} \n   链接: {url}  \n\n"
-    else:
-        result = await check_cookie()
-        if "有效" in result:
-            result = f"未找到与\"{keywords}\"相关的笔记"
-    return result
+    try:
+        data = await asyncio.wait_for(xhs_api.search_notes(keywords), timeout=15.0)
+        logger.info(f'keywords:{keywords},data:{data}')
+        result = "搜索结果：\n\n"
+        if 'data' in data and 'items' in data['data'] and len(data['data']['items']) > 0:
+            for i in range(0, len(data['data']['items'])):
+                item = data['data']['items'][i]
+                if 'note_card' in item and 'display_title' in item['note_card']:
+                    title = item['note_card']['display_title']
+                    liked_count = item['note_card']['interact_info']['liked_count']
+                    # cover=item['note_card']['cover']['url_default']
+                    url = f'https://www.xiaohongshu.com/explore/{item["id"]}?xsec_token={item["xsec_token"]}'
+                    result += f"{i}. {title}  \n 点赞数:{liked_count} \n   链接: {url}  \n\n"
+        else:
+            result = await check_cookie()
+            if "有效" in result:
+                result = f"未找到与\"{keywords}\"相关的笔记"
+        return result
+    except asyncio.TimeoutError:
+        logger.error(f"Search notes for '{keywords}' timed out")
+        return f"搜索关键词\"{keywords}\"超时"
+    except Exception as e:
+        logger.error(f"Search notes error: {e}")
+        return f"搜索笔记失败: {str(e)}"
 
 
 @mcp.tool()
@@ -118,43 +135,50 @@ async def get_note_content(url: str) -> str:
     Args:
         url: 笔记 url
     """
-    params = get_nodeid_token(url=url)
-    data = await xhs_api.get_note_content(**params)
-    logger.info(f'url:{url},data:{data}')
-    result = ""
-    if 'data' in data and 'items' in data['data'] and len(data['data']['items']) > 0:
-        for i in range(0, len(data['data']['items'])):
-            item = data['data']['items'][i]
+    try:
+        params = get_nodeid_token(url=url)
+        data = await asyncio.wait_for(xhs_api.get_note_content(**params), timeout=15.0)
+        logger.info(f'url:{url},data:{data}')
+        result = ""
+        if 'data' in data and 'items' in data['data'] and len(data['data']['items']) > 0:
+            for i in range(0, len(data['data']['items'])):
+                item = data['data']['items'][i]
 
-            if 'note_card' in item and 'user' in item['note_card']:
-                note_card = item['note_card']
-                cover = ''
-                if 'image_list' in note_card and len(note_card['image_list']) > 0 and note_card['image_list'][0][
-                    'url_pre']:
-                    cover = note_card['image_list'][0]['url_pre']
+                if 'note_card' in item and 'user' in item['note_card']:
+                    note_card = item['note_card']
+                    cover = ''
+                    if 'image_list' in note_card and len(note_card['image_list']) > 0 and note_card['image_list'][0][
+                        'url_pre']:
+                        cover = note_card['image_list'][0]['url_pre']
 
-                data_format = datetime.fromtimestamp(note_card.get('time', 0) / 1000)
-                liked_count = item['note_card']['interact_info']['liked_count']
-                comment_count = item['note_card']['interact_info']['comment_count']
-                collected_count = item['note_card']['interact_info']['collected_count']
+                    data_format = datetime.fromtimestamp(note_card.get('time', 0) / 1000)
+                    liked_count = item['note_card']['interact_info']['liked_count']
+                    comment_count = item['note_card']['interact_info']['comment_count']
+                    collected_count = item['note_card']['interact_info']['collected_count']
 
-                url = f'https://www.xiaohongshu.com/explore/{params["note_id"]}?xsec_token={params["xsec_token"]}'
-                result = f"标题: {note_card.get('title', '')}\n"
-                result += f"作者: {note_card['user'].get('nickname', '')}\n"
-                result += f"发布时间: {data_format}\n"
-                result += f"点赞数: {liked_count}\n"
-                result += f"评论数: {comment_count}\n"
-                result += f"收藏数: {collected_count}\n"
-                result += f"链接: {url}\n\n"
-                result += f"内容:\n{note_card.get('desc', '')}\n"
-                result += f"封面:\n{cover}"
+                    url = f'https://www.xiaohongshu.com/explore/{params["note_id"]}?xsec_token={params["xsec_token"]}'
+                    result = f"标题: {note_card.get('title', '')}\n"
+                    result += f"作者: {note_card['user'].get('nickname', '')}\n"
+                    result += f"发布时间: {data_format}\n"
+                    result += f"点赞数: {liked_count}\n"
+                    result += f"评论数: {comment_count}\n"
+                    result += f"收藏数: {collected_count}\n"
+                    result += f"链接: {url}\n\n"
+                    result += f"内容:\n{note_card.get('desc', '')}\n"
+                    result += f"封面:\n{cover}"
 
-            break
-    else:
-        result = await check_cookie()
-        if "有效" in result:
-            result = "获取失败"
-    return result
+                break
+        else:
+            result = await check_cookie()
+            if "有效" in result:
+                result = "获取失败"
+        return result
+    except asyncio.TimeoutError:
+        logger.error(f"Get note content for '{url}' timed out")
+        return "获取笔记内容超时"
+    except Exception as e:
+        logger.error(f"Get note content error: {e}")
+        return f"获取笔记内容失败: {str(e)}"
 
 
 @mcp.tool()
@@ -166,25 +190,31 @@ async def get_note_comments(url: str) -> str:
     
 
     """
-    params = get_nodeid_token(url=url)
+    try:
+        params = get_nodeid_token(url=url)
+        data = await asyncio.wait_for(xhs_api.get_note_comments(**params), timeout=15.0)
+        logger.info(f'url:{url},data:{data}')
 
-    data = await xhs_api.get_note_comments(**params)
-    logger.info(f'url:{url},data:{data}')
+        result = ""
+        if 'data' in data and 'comments' in data['data'] and len(data['data']['comments']) > 0:
+            for i in range(0, len(data['data']['comments'])):
+                item = data['data']['comments'][i]
+                data_format = datetime.fromtimestamp(item['create_time'] / 1000)
 
-    result = ""
-    if 'data' in data and 'comments' in data['data'] and len(data['data']['comments']) > 0:
-        for i in range(0, len(data['data']['comments'])):
-            item = data['data']['comments'][i]
-            data_format = datetime.fromtimestamp(item['create_time'] / 1000)
+                result += f"{i}. {item['user_info']['nickname']}（{data_format}）: {item['content']}\n\n"
 
-            result += f"{i}. {item['user_info']['nickname']}（{data_format}）: {item['content']}\n\n"
+        else:
+            result = await check_cookie()
+            if "有效" in result:
+                result = "暂无评论"
 
-    else:
-        result = await check_cookie()
-        if "有效" in result:
-            result = "暂无评论"
-
-    return result
+        return result
+    except asyncio.TimeoutError:
+        logger.error(f"Get note comments for '{url}' timed out")
+        return "获取笔记评论超时"
+    except Exception as e:
+        logger.error(f"Get note comments error: {e}")
+        return f"获取笔记评论失败: {str(e)}"
 
 
 @mcp.tool()
@@ -195,16 +225,22 @@ async def post_comment(comment: str, note_id: str) -> str:
         note_id: 笔记 note_id
         comment: 要发布的评论内容
     """
-    # params = get_nodeid_token(url)
-    response = await xhs_api.post_comment(note_id, comment)
-    if 'success' in response and response['success'] == True:
-        return "回复成功"
-    else:
-        result = await check_cookie()
-        if "有效" in result:
-            return "回复失败"
+    try:
+        response = await asyncio.wait_for(xhs_api.post_comment(note_id, comment), timeout=15.0)
+        if 'success' in response and response['success'] == True:
+            return "回复成功"
         else:
-            return result
+            result = await check_cookie()
+            if "有效" in result:
+                return "回复失败"
+            else:
+                return result
+    except asyncio.TimeoutError:
+        logger.error(f"Post comment for note '{note_id}' timed out")
+        return "发布评论超时"
+    except Exception as e:
+        logger.error(f"Post comment error: {e}")
+        return f"发布评论失败: {str(e)}"
 
 
 if __name__ == "__main__":

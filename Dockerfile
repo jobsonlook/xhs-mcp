@@ -2,31 +2,35 @@
 # 使用 Python 3.12 作为基础镜像
 FROM python:3.12-slim
 
-# 安装 Node.js 20.11.1
-RUN apt-get update && apt-get install -y \
+# 安装系统依赖和 Node.js 20.x
+RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
+    ca-certificates \
     && curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
     && apt-get install -y nodejs \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
-
 # 设置工作目录
 WORKDIR /app
 
-# 复制项目文件
+# 先复制依赖文件以利用 Docker 缓存
+COPY pyproject.toml uv.lock ./
+
+# 安装 Python 包管理器
+RUN pip install --no-cache-dir uv
+
+# 安装项目依赖
+RUN uv sync --frozen
+
+# 复制应用代码
 COPY . /app/
-
-# 安装 uv
-RUN pip install uv
-
-# 使用 uv 安装项目依赖
-RUN uv sync
 
 # 设置环境变量
 ENV PYTHONUNBUFFERED=1
 
-
+# 暴露端口
+EXPOSE 8080
 
 # 启动命令
-CMD ["uv", "--directory","/app","run","main.py"]
+CMD ["uv", "run", "python", "main.py"]

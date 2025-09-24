@@ -1,0 +1,21 @@
+services:
+  xhs-mcp:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    environment:
+      XHS_COOKIE: ${XHS_COOKIE}
+      UV_LINK_MODE: copy
+    ports:
+      - "8080:8080"
+    # For development: mount source code
+    volumes:
+      - ./main.py:/app/main.py
+      - ./api:/app/api
+      - ./pyproject.toml:/app/pyproject.toml
+    command:
+      - bash
+      - -c
+      - >
+        pip install -q --no-cache-dir mcp-proxy &&
+        mcp-proxy --transport sse --host 0.0.0.0 --port 8080 --pass-environment -- uv run python main.py
