@@ -6,7 +6,7 @@ from datetime import datetime
 from mcp.server.fastmcp import FastMCP, Context
 
 import requests
-from api.xhs_api import XhsApi
+from .api.xhs_api import XhsApi
 import logging
 from urllib.parse import urlparse, parse_qs
 import argparse
@@ -207,6 +207,10 @@ async def post_comment(comment: str, note_id: str) -> str:
             return result
 
 
-if __name__ == "__main__":
+def main():
+    """主入口函数，用于uvx调用"""
     logger.info("mcp run")
     mcp.run(transport=args.type)
+
+if __name__ == "__main__":
+    main()
