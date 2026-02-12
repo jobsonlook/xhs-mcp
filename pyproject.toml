@@ -5,8 +5,9 @@ description = "小红书MCP服务器 - 提供小红书API功能的MCP工具"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
-    "curl-cffi>=0.10.0",
+    "curl-cffi>=0.10.0,<0.14.0",
     "mcp[cli]>=1.6.0",
+    "playwright>=1.58.0",
     "pyexecjs>=1.5.1",
     "requests>=2.32.3",
 ]

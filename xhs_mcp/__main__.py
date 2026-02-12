@@ -1,12 +1,13 @@
 from typing import Any, List, Dict, Optional
 import asyncio
+from contextlib import asynccontextmanager
 import json
 import os
 from datetime import datetime
 from mcp.server.fastmcp import FastMCP, Context
 
 import requests
-from .api.xhs_api import XhsApi
+from .api.xhs_api_v2 import XhsApiV2
 import logging
 from urllib.parse import urlparse, parse_qs
 import argparse
@@ -21,11 +22,22 @@ parser.add_argument("--port", type=int, default=8809)
 
 args = parser.parse_args()
 
-mcp = FastMCP("小红书", port=args.port)
-
 xhs_cookie = os.getenv('XHS_COOKIE')
+xhs_api = XhsApiV2(cookie=xhs_cookie)
 
-xhs_api = XhsApi(cookie=xhs_cookie)
+@asynccontextmanager
+async def server_lifespan(server: FastMCP):
+    """管理服务生命周期：启动时初始化浏览器，关闭时清理资源"""
+    print("aaaa")
+    await xhs_api.start()
+    try:
+        yield
+    finally:
+        print("111")
+
+        await xhs_api.close()
+
+mcp = FastMCP("小红书", port=args.port, lifespan=server_lifespan)
 
 
 def get_nodeid_token(url=None, note_ids=None):
