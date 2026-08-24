@@ -10,3 +10,4 @@ static/
 # Virtual environments
 .venv
 .idea
+.xhs-chrome-profile/

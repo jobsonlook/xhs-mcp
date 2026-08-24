@@ -64,10 +64,10 @@ async def check_cookie() -> str:
     try:
         data = await xhs_api.get_me()
 
-        if 'success' in data and data['success'] == True:
+        user = data.get("data") or {}
+        if data.get("success") is True and user.get("user_id") and not user.get("guest"):
             return "cookie有效"
-        else:
-            return "cookie已失效"
+        return "cookie已失效"
     except Exception as e:
         logger.error(e)
         return "cookie已失效"
