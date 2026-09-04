@@ -1,5 +1,5 @@
 # 小红书MCP服务
-[![smithery badge](https://smithery.ai/badge/@jobsonlook/xhs-mcp)](https://smithery.ai/server/@jobsonlook/xhs-mcp)
+[![Listed on Skillselion](https://skillselion.com/badge/mcp/tool/io.github.jobsonlook/xhs-mcp.svg)](https://skillselion.com/mcp/tool/io.github.jobsonlook/xhs-mcp)
 [![PyPI version](https://badge.fury.io/py/jobson-xhs-mcp.svg)](https://badge.fury.io/py/jobson-xhs-mcp)
 
 一个用于小红书API的MCP（Model Context Protocol）服务器，支持搜索笔记、获取内容、查看评论和发表评论等功能。
